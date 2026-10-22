@@ -2,6 +2,7 @@ package dump
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path"
 
@@ -47,6 +48,38 @@ func (d *Dumper) DumpTree(ctx context.Context, tree data.TreeNodeIterator, rootP
 			return d.dumpZip(ctx, ch)
 		default:
 			panic("unknown dump format")
+		}
+	})
+	return wg.Wait()
+}
+
+// DumpNodes dumps the given nodes into a single archive. Directory nodes are
+// walked and their contents are stored at paths relative to the node's Path,
+// which must be set to the node's full path within the snapshot. This allows
+// dumping multiple files and directories while keeping their full paths.
+func (d *Dumper) DumpNodes(ctx context.Context, roots []*data.Node) error {
+	wg, ctx := errgroup.WithContext(ctx)
+
+	// ch is buffered to deal with variable download/write speeds.
+	ch := make(chan *data.Node, 10)
+	wg.Go(func() error {
+		defer close(ch)
+		for _, root := range roots {
+			if err := sendNodes(ctx, d.repo, root, ch); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	wg.Go(func() error {
+		switch d.format {
+		case "tar":
+			return d.dumpTar(ctx, ch)
+		case "zip":
+			return d.dumpZip(ctx, ch)
+		default:
+			return fmt.Errorf("unknown archive format %q", d.format)
 		}
 	})
 	return wg.Wait()

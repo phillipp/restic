@@ -3,7 +3,8 @@ package dump
 import (
 	"archive/zip"
 	"context"
-	"path/filepath"
+	"path"
+	"strings"
 
 	"github.com/restic/restic/internal/data"
 	"github.com/restic/restic/internal/errors"
@@ -28,13 +29,10 @@ func (d *Dumper) dumpZip(ctx context.Context, ch <-chan *data.Node) (err error) 
 }
 
 func (d *Dumper) dumpNodeZip(ctx context.Context, node *data.Node, zw *zip.Writer) error {
-	relPath, err := filepath.Rel("/", node.Path)
-	if err != nil {
-		return err
-	}
+	relPath := strings.TrimPrefix(path.Clean("/"+node.Path), "/")
 
 	header := &zip.FileHeader{
-		Name:               filepath.ToSlash(relPath),
+		Name:               relPath,
 		UncompressedSize64: node.Size,
 		Modified:           node.ModTime,
 	}

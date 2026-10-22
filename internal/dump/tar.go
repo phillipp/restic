@@ -5,7 +5,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"path"
+	"strings"
 
 	"github.com/restic/restic/internal/data"
 	"github.com/restic/restic/internal/debug"
@@ -49,13 +50,10 @@ func tarIdentifier(id uint32) int {
 }
 
 func (d *Dumper) dumpNodeTar(ctx context.Context, node *data.Node, w *tar.Writer) error {
-	relPath, err := filepath.Rel("/", node.Path)
-	if err != nil {
-		return err
-	}
+	relPath := strings.TrimPrefix(path.Clean("/"+node.Path), "/")
 
 	header := &tar.Header{
-		Name:       filepath.ToSlash(relPath),
+		Name:       relPath,
 		Size:       int64(node.Size),
 		Mode:       int64(node.Mode.Perm()), // cIS* constants are added later
 		Uid:        tarIdentifier(node.UID),
@@ -93,7 +91,7 @@ func (d *Dumper) dumpNodeTar(ctx context.Context, node *data.Node, w *tar.Writer
 		header.Name += "/"
 	}
 
-	err = w.WriteHeader(header)
+	err := w.WriteHeader(header)
 	if err != nil {
 		return fmt.Errorf("writing header for %q: %w", node.Path, err)
 	}

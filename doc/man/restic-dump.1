@@ -6,14 +6,21 @@ restic-dump - Print backed-up files or folders to stdout
 
 
 .SH SYNOPSIS
-\fBrestic dump [flags] snapshotID file\fP
+\fBrestic dump [flags] snapshotID [file ...]\fP
 
 
 .SH DESCRIPTION
 The "dump" command extracts files from a snapshot from the repository. If a
 single file is selected, it prints its contents to stdout. Folders are output
 as a tar (default) or zip file containing the contents of the specified folder.
+Use "--force-archive" to wrap even a single file in the selected archive format.
 Pass "/" as file name to dump the whole snapshot as an archive file.
+
+.PP
+If multiple files or directories are specified, they are collected into a single
+archive (tar or zip). Paths remain relative to the selected snapshot root,
+so "/dir" and "/other/dir" stay separate. Use the "snapshotID:subfolder"
+syntax to choose the archive root explicitly.
 
 .PP
 The special snapshotID "latest" can be used to use the latest snapshot in the
@@ -36,6 +43,10 @@ Exit status is 12 if the password is incorrect.
 .SH OPTIONS
 \fB-a\fP, \fB--archive\fP="tar"
 	set archive \fBformat\fR as "tar" or "zip"
+
+.PP
+\fB--force-archive\fP[=false]
+	write an archive even when selecting a single file
 
 .PP
 \fB-h\fP, \fB--help\fP[=false]

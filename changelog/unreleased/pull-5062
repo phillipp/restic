@@ -1,0 +1,11 @@
+Enhancement: Dump multiple paths into one archive
+
+The dump command accepts multiple files and directories. It writes one archive
+with paths relative to the selected snapshot root, preserving the existing
+single-directory path layout. Overlapping selections are included once.
+Use snapshotID:subfolder to select the archive root and --force-archive to
+wrap a single file in an archive. A lone file still produces raw output by
+default. Missing selections fail before archive output starts.
+
+https://github.com/restic/restic/issues/4173
+https://github.com/restic/restic/pull/5062
