@@ -2,8 +2,12 @@ package dump
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"os"
 	"sort"
 	"testing"
 
@@ -83,4 +87,28 @@ func checkTarEntries(t *testing.T, src *bytes.Buffer, want []string) {
 	sort.Strings(got)
 	sort.Strings(want)
 	rtest.Equals(t, want, got)
+}
+
+// Real customer restores exceed the classic ZIP limit of 65535 entries.
+func TestDumpNodesZip64(t *testing.T) {
+	const count = 65537
+	roots := make([]*data.Node, count)
+	for i := range roots {
+		roots[i] = &data.Node{Type: data.NodeTypeSymlink, Mode: os.ModeSymlink | 0777, Path: fmt.Sprintf("/links/%06d", i), LinkTarget: "target"}
+	}
+	var output bytes.Buffer
+	rtest.OK(t, New("zip", nil, &output).DumpNodes(context.Background(), roots))
+	reader, err := zip.NewReader(bytes.NewReader(output.Bytes()), int64(output.Len()))
+	rtest.OK(t, err)
+	rtest.Equals(t, count, len(reader.File))
+	for i, entry := range reader.File {
+		rtest.Equals(t, fmt.Sprintf("links/%06d", i), entry.Name)
+		rtest.Assert(t, entry.Mode()&os.ModeSymlink != 0, "symlink mode must survive")
+		content, err := entry.Open()
+		rtest.OK(t, err)
+		data, err := io.ReadAll(content)
+		rtest.OK(t, err)
+		rtest.OK(t, content.Close())
+		rtest.Equals(t, "target", string(data))
+	}
 }
